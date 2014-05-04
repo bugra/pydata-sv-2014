@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Outlier Detection in Time Series Signals</title>
+
+		<meta name="description" content="Outlier Detection in Time Series Signals using FFT, Median Filtering and Monte Carlo Markov Chain ">
+		<meta name="author" content="Bugra Akyildiz">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/simple.css" id="theme">
+        
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/tomorrow-night-bright.css">
+
+		<!-- If the query includes 'print-pdf', use the PDF print sheet -->
+		<script>
+			document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+                
+				<section>
+					<h2>Outlier Detection in Time Series Signals</h2>
+                    <a href="http://bugra.github.io" >Bugra Akyildiz</a><br>
+					<a href="https://twitter.com/bugraa">@bugraa</a><br>
+                    <span style="color:#57068C;">bugra.github.io</span><br><br>
+				    <!--<a href="http://bitly.com/bundles/bugraa/1">Bitly Bundle</a>-->
+                    
+					<img src="static/img/xkcd-outlier.png" alt="Outlier" width="1024" height="400">
+				</section>
+                
+                <section >
+					<h2>Data problems</h2>
+                    <ul>
+                        <h3><li>Missing Observations </li></h3>
+                        <h3><li>Noise</li></h3>
+                            <h5><li>Electrical Hum</li></h5>
+                        <h3><li>Outliers</li></h3>
+                    </ul>
+				</section>
+
+				<section>
+                    <h1>Outliers</h1>
+                    <ul>
+                    <h3><li>Logistical Problems</li></h3>
+                        <h5><li>Data transmission or transcription.</li></h5>
+                    <h3><li>Experimental Errors</li></h3>    
+                        <h5><li>Erroneous Procedures</li></h5>
+                        <h5><li>Measurement Errors</li></h5>
+                        <h5><li>Wrong Data Entry</li></h5>
+                        <h5><li>Component Failures</li></h5>
+                    </ul>				    
+				</section>
+                
+                <section>
+					<h2>What is it?</h2>
+                    <blockquote>The problem, as always, is what the heck does one mean by "outlier" in these contexts. Seems to be like pornography -- "I know it when I see it." - Berton Gunter, <a href="http://tolstoy.newcastle.edu.au/R/help/05/04/2540.html"> R-help, December 2009</a></blockquote>
+                    <img src="static/img/out-liar.gif" alt="Out-liar">
+				</section>
+
+				
+				<section>
+					<h1>Outlier Definition</h1>	
+                    <h2 style="color:#188487;"><blockquote>An observation in a data set which appears to be inconsistent with the remainder of that set of data</blockquote></h2>
+				</section>
+
+                
+<section data-markdown>
+## Median Filter
+$$ y[m] = median\\{ x[m-\frac{w}{2}, m+\frac{w}{2}] \\} $$
+where $w$ is the window size whose median will replace the original data point.
+
+- Not linear
+- Does not smooth the signal. (Does not blur the images)
+- Robust to outliers!
+
+</section>
+                
+<section>
+<h2>Toy Example</h2>
+    <img src="static/img/median-filtering-example.png" alt="Median Filter">
+    <br>
+<ul>
+<li>Window size: $w$ = 3 </li>
+<li>Extend left-most and right-most values to compute boundaries</li>
+</ul>    
+</section>
+                
+<section>
+<h2>Signal with Outliers</h2>
+    <img src="static/img/original-damped-signal-without-outliers.png" alt="Original Signal" style="width: 500px; height: 650px; float: left;">
+    <img src="static/img/original-damped-signal-with-outliers.png" alt="Signal with Outlier" style="width: 500px; height: 650px; float: left;">
+</section>
+
+<section>
+<img src="static/img/median-filter-code.png" alt="Original Signal" style="width: 1024px; height: 600px;">    
+</section>
+                
+<section>
+<h2>Median Filtered Signal</h2>
+    <img src="static/img/median-filtered-damped-signal.png" alt="Original Signal" style="width: 1024px; height: 600px;">
+</section>
+                
+                
+<section>
+<h2>Know Your Tools</h2>
+    <img src="static/img/baby-elephant-drinking-water.jpg" alt="Baby Elephant" style="width: 800; height: 600px;"><br>
+    
+</section>
+                
+				<section>
+					<h1>Fast Fourier Transform (FFT)</h1>
+					<h2>Noise Removal</h2>
+                        <li>Not necessarily distant than main signal</li>
+                        <li>Not necessarily random</li>
+                        <li>May have dependency to the original signal</li>
+                    <h2>Outlier Detection</h2>
+                        <li>Distant observations than main signal</li>
+				</section>
+
+<section data-markdown>			
+## DFT(Discrete Fourier Transform) Definition
+$N$ point FFT of $x[n]$ sequence
+$$X[k] = \sum_{n=0}^{N-1} x[n] e^{\frac{-j 2 \pi n k}{N}}$$    
+where $w$(frequency) is sampled by $\frac{2\pi k}{N}$ for $k = 0,1, \ldots, N-1$.
+
+## IDFT(Inverse DFT) Definition
+$$ x[n] = \frac{1}{N} \sum_{k=0}^{N-1} X[k] e^{\frac{j 2\pi n k}{N}} $$
+for $n=0, 1, \ldots, N-1$
+</section>
+
+<section>
+<h1>FFT Block</h1>    
+<img src="static/img/fft-16-block.jpg" alt="Original Signal" style="width: 1000px; height: 600px;">    
+</section>
+<section data-markdown>	
+# Euler's Formula    
+## $$ e^{jx} = cos x + j sin x $$
+</section>
+                
+<section>                
+<h2> Fourier Expansion </h2>
+<img src="static/img/fourier-expansion.gif" alt="FFT Visualization" style="width: 1024px; height: 600px;">
+</section>
+                
+<section>
+<h2> Fourier Expansion Square Wave </h2>
+<img src="static/img/gibbs-phonemenon.gif" alt="FFT Visualization" style="width: 1024px; height: 600px;">
+</section>
+
+<section>                
+<h2> Fourier Transform Visualization </h2>
+<img src="static/img/fft-visualization.gif" alt="FFT Visualization" style="width: 1024px; height: 600px;">
+</section>
+                
+<section>				
+<h2> FFT for Noise Removal </h2>
+<img src="static/img/original-signal-without-noise.png" alt="Original Signal" style="width: 500px; height: 300px; float: left;">
+<img src="static/img/original-signal-with-noise.png" alt="Noisy Signal" style="width: 500px; height: 300px; float: left;">
+</section>
+                
+<section>                
+<h2> Frequency Response </h2>
+<img src="static/img/frequency-response-of-signal-with-noise.png" alt="Original Signal" style="width: 1024px; height: 600px;">
+</section>
+
+<section>                
+<h2> Frequency Response of Filtered Signal </h2>
+<img src="static/img/filtered-noise-plots.png" alt="Original Signal" style="width: 1024px; height: 600px;">
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## FFT Procedure to remove outliers
+- Slide a window over the signal for a fixed length $w$
+- Get frequency response of the signal in the window
+- If the highest frequency component is larger than $f_{max}$ (this also determines how much variance you want to capture
+    - For each observation in the window
+        - Remove it and take the FFT of the remainder of observations in the window
+        - If frequency response of the signal is smaller than $f_{max}$, then label the observation as **outlier**.
+        - Else, put the observation back into the window, remove the next one.
+</script>    
+</section>
+
+<section>
+<img src="static/img/fft-algo-outlier.png" alt="Original Signal" style="width: 1024px; height: 600px;">    
+</section>
+
+                
+<section>                
+<h2> Outliers detected by FFT </h2>
+<img src="static/img/fft-outliers-are-captured.png" alt="Original Signal" style="width: 1024px; height: 650px;">
+</section>
+
+<section>                
+<h2> Outlier Detection via Monte Carlo Markov Chain </h2>
+    <ul>
+        <li>Monte Carlo Sampling: To estimate characteristics of a distribution </li>
+        <ul>
+            <li>Mean</li>
+            <li>Variance</li>
+            <li>Kurtosis</li>
+        </ul>
+        <li>Markov Chain: Stochastic process to sample different _states_ from a stationay distribution</li>
+        <li>MCMC: Design a Markov Chain in such a way that the stationary distribution is the distribution that we want to estimate <i>(target distribution)</i> </li>
+    </ul>
+</section> 
+
+<section data-markdown>
+## Metropolis-Hastings Sampler
+We want to sample from $p(x)$, creating the following Markov Chain:
+$$x^{(1)} \rightarrow x^{(2)} \rightarrow \ldots  \rightarrow x^{(t)} \rightarrow \ldots $$
+where $t$ is the iteration number in Markov Chain 
+
+- Initialize $x^{(1)}$
+- Use proposal distribution $q(x_s|x_t)$ to sample candidate value $x_s$ given the current value of $x_t$
+- Assuming the transition matrix is symmetric, compute $a_{prob}(x_t, x_s) = min [1, \frac{p(x_s)}{p(x_t)}]$ 
+- Based on acceptance criterion($a_{prob}$), accept or reject the observation.    
+</section>
+                
+<section>
+<h2>Basic Metropolis Sampler</h2>    
+    <pre><code data-trim>
+n_iterations = 100000
+burn_in = 20000
+t = np.zeros(n_iterations)
+ii = 0
+sigma = 1.
+
+t_previous = np.random.randn()
+posterior_distribution = lambda x: np.exp(-x * x/2.)
+proposal_distribution = lambda mu, sigma: sigma * np.random.randn() + mu
+
+while ii < n_iterations:
+    t_proposed = proposal_distribution(t_previous, sigma)
+    proposed_posterior = posterior_distribution(t_proposed)
+    previous_posterior = posterior_distribution(t_previous)
+    acceptance_criterion = np.min([proposed_posterior / previous_posterior, 1.0])
+    temp = np.random.rand()
+    if temp < acceptance_criterion : # acceptance criteria
+        t[ii]=t_proposed
+        t_previous=t_proposed
+    else:
+        t[ii]=t_previous                
+    ii += 1
+    </code></pre>
+</section>
+
+
+<section>				
+<h2> Original Signal and Signal with Outliers </h2>
+<img src="static/img/original-signal-mcmc.png" alt="Original Signal" style="width: 500px; height: 600px; float: left;">
+<img src="static/img/original-signal-with-outlier-mcmc.png" alt="Signal with outliers" style="width: 500px; height: 600px; float: left;">
+</section>
+                
+<section>
+<img src="static/img/posterior-plots-mcmc.png" alt="Posterior Plots" style="width: 1024px; height: 900px; ">
+</section>
+                
+
+
+<section>
+<h2> Box Plot of Outlier and Original Signal </h2>
+<img src="static/img/box-plots-mcmc.png" alt="Original Signal" style="width: 1024px; height: 600px; ">
+</section>
+                
+<section>
+<h2>Why this is important?</h2>
+<img src="static/img/error-bar-histogram.jpg" alt="Noisy Signal" style="width: 1024px; height: 600px;">
+</section>
+
+
+<section>
+<h2>Outliers are captured via MCMC</h2>
+<img src="static/img/outlier-plots-mcmc.png" alt="Outliers are captured" style="width: 1024px; height: 650px;">
+</section>
+
+
+<section>
+<img src="static/img/girl-with-fish.jpg" alt="Out-liar">
+</section>
+
+<section>
+<h3>Advantages</h3>    
+<ul>
+<li>As long as the model is nicely captured, the priors do not have to be known beforehand. The data leads the way.</li>
+<li>If priors are known, they could be incorporated into the model whereas other models cannot use prior information.</li>
+<li>Probabilistic, you could reason about probabilities whereas frequentist approaches do not provide a similar functionality like Bayesain methods.</li>
+<li>One can build complex models in Bayesian setting whereas this is not possible for Frequentist methods as you depend on the method rather than models.</li>
+</ul>
+<h3>Disadvantages</h3>
+<ul>
+<li>You need to design priors, models and inference schema beforehand whereas you do not need to do these things in frequentist methods.</li>
+<li>Generally both computation and algorithm-wise, frequentist approaches tend to be faster and simpler.</li>
+</ul>    
+</section>
+
+                <section data-markdown>
+                    <script type="text/template">
+Finally, a word of wisdom from a long-ago engineering colleague: “Whenever I see an outlier, I’m
+never sure whether to throw it away or patent it."
+— Berton Gunter (on outlier identiﬁcation)
+[R-help (December 2009)](https://stat.ethz.ch/pipermail/r-help/2009-December/223168.html)
+                    </script>
+                </section>
+
+<section>
+<img src="static/img/baby-elephants.gif" alt="Baby-Elephant" style="width: 1024px; height: 650px;">    
+</section>
+                
+<section>
+    <h2>Credits</h2>
+    <ul>
+        <li>http://xkcd.com/</li>
+        <li>http://1ucasvb.tumblr.com/</li>
+        
+    <h3>Source of the presentation: https://github.com/bugra/pydata-sv-2014</h3>    
+    </ul>
+                </section>
+
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+                width: 1024,
+                height: 768,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+                math: {
+        mathjax: 'http://cdn.mathjax.org/mathjax/latest/MathJax.js',
+        config: 'TeX-AMS_HTML-full'  // See http://docs.mathjax.org/en/latest/config-files.html
+    },
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } },
+                    { src: 'plugin/math/math.js', async: true }
+					// { src: 'plugin/search/search.js', async: true, condition: function() { return !!document.body.classList; } }
+					// { src: 'plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
