@@ -9,3 +9,5 @@ Relevant Blog Posts:
 - Outlier via FFT and Median Filtering: http://bit.ly/outlier-fft
 - Outlier via MCMC(Monte Carlo Markov Chain): http://bit.ly/outlier-mcmc
 
+### Record of Presentation
+[Presentation](https://www.youtube.com/watch?v=t4zEeujVht8).
